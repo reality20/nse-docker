@@ -1,7 +1,0 @@
-INFO:     Will watch for changes in these directories: ['/app/backend']
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [2956] using StatReload
-INFO:nse_client:Refreshing cookies...
-INFO:nse_client:Homepage status: 403
-INFO:     Started server process [3077]
-INFO:     Waiting for application startup.
