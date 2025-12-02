@@ -1,7 +1,10 @@
 import asyncio
 import logging
+import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from nse_client import NSEClient
 import json
 import time
@@ -21,7 +24,10 @@ app.add_middleware(
 
 nse_client = NSEClient()
 # Initialize cookies on startup
-nse_client.refresh_cookies()
+try:
+    nse_client.refresh_cookies()
+except Exception as e:
+    logger.error(f"Failed to refresh cookies on startup: {e}")
 
 class ConnectionManager:
     def __init__(self):
@@ -38,7 +44,9 @@ class ConnectionManager:
         logger.info(f"Client disconnected. Total: {len(self.active_connections)}")
 
     async def broadcast(self, message: str):
-        for connection in self.active_connections:
+        # iterate over a copy of the list to allow modification during iteration if needed
+        # though remove() happens in disconnect, synchronous iteration is safer
+        for connection in self.active_connections[:]:
             try:
                 await connection.send_text(message)
             except Exception as e:
@@ -82,6 +90,26 @@ async def broadcast_market_data():
 async def startup_event():
     asyncio.create_task(broadcast_market_data())
 
-@app.get("/")
-def read_root():
-    return {"status": "ok", "message": "NSE Trading Backend is running"}
+# Serve Static Files
+# We expect the frontend build to be in 'dist' directory
+if os.path.exists("dist"):
+    app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
+    # For Vite, usually assets are in dist/assets.
+    # But we also have favicon, index.html in root of dist.
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        # Serve index.html for any path not found (SPA routing)
+        # But we must be careful not to hide API routes if we had HTTP API routes.
+        # Currently we only have WebSocket at /ws.
+
+        # Check if file exists in dist
+        file_path = os.path.join("dist", full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+
+        # Default to index.html
+        return FileResponse("dist/index.html")
+
+else:
+    logger.warning("'dist' directory not found. Frontend will not be served.")

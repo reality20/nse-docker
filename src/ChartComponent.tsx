@@ -4,7 +4,8 @@ import useWebSocket, { ReadyState } from 'react-use-websocket';
 import { Activity, Wifi, WifiOff, TrendingUp, Clock } from 'lucide-react';
 
 // NSE WebSocket URL
-const WS_URL = 'ws://localhost:8000/ws';
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL = `${protocol}//${window.location.host}/ws`;
 
 interface PriceData {
   symbol: string;
